@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+
 //#include <pthread.h>
 #define MAX_CLIENTS 100
 
@@ -13,25 +14,28 @@ DWORD WINAPI Recv_serv(LPVOID newsock);
 DWORD WINAPI Recv_cli(LPVOID newsock);
 DWORD WINAPI Send(LPVOID newsock);
 
-typedef struct {
+struct client{
 	char name[10];
 	int unique_id;
 	int port;
-} client;
+	int ip;
+};
 
-client clients[MAX_CLIENTS] = { { "", 0, 0 } };
+client clients[MAX_CLIENTS] = { { "", 0, 0, 0 } };
 
 int find_user(char* name) {
 	int counter = 0;
 	int port;
+	printf("%s \n", name);
 	while (counter < MAX_CLIENTS && clients[counter].unique_id != 0) {
 		if (strcmp(clients[counter].name, name) == 0) {
 			port = clients[counter].port;
-			return port;
+			printf("%d \n", port);
+			return counter;
 		}
 		counter++;
 	}
-	return 0;
+	return -1;
 }
 
 char name[10];
@@ -48,7 +52,7 @@ void quit(int sock) {
 void ctrl_c(int a) {
 	isExit = true;
 }
-
+int a;
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -60,6 +64,9 @@ int main(int argc, char *argv[]) {
 
 	struct hostent *server;
 	server = gethostbyname(argv[1]);
+//	a = (int)argv[1];
+//	printf("%d", a);
+//	printf("%d ", htonl(atoi(server));
 	if (server == NULL) {
 		printf("ERROR, no such host\n");
 		exit(2);
@@ -154,6 +161,8 @@ int main(int argc, char *argv[]) {
 
 	send(sock_serv, (char*) &addr, sizeof(addr), 0);
 
+//	send(sock_serv, (char*) &a, sizeof(a), 0);
+
 	char active[1000];
 	memset(active, 0, 1000);
 
@@ -174,7 +183,7 @@ int main(int argc, char *argv[]) {
 	printf("\nThe active users are:\n%s", active);
 
 	if (listen(sock_cli, 5) < 0) {
-		perror("Error on listening");
+		printf("Error on listening");
 		exit(3);
 		WSACleanup();
 	}
@@ -215,6 +224,8 @@ int main(int argc, char *argv[]) {
 
 bool block_rec = false;
 
+char global_recv_buf[1000];
+
 DWORD WINAPI Recv_serv(LPVOID newsock) {
 	SOCKET my_sock;
 	my_sock = ((SOCKET *) newsock)[0];
@@ -238,9 +249,22 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 			exit(1);
 		} else {
 			recv(my_sock, (char*) clients, sizeof(clients), 0);
-		}
+			char a[100];
+			memset(a, 0, 100);
+		//	printf("%d \n", sizeof(clients));
 
+		/*	for (int i = 0; i < MAX_CLIENTS; i++) {
+					strcat(a, clients[i].name);
+					strcat(a, "\n");
+					if (strcmp("\0", clients[i].name) == 0) {
+						break;
+					}
+				}
+			printf("\nThe active users are:\n%s", a);*/
+		}
+//заменить на if
 		do {
+			//global_recv_buf
 			memset(buf, 0, 1000);
 			strcat(buf, msg);
 		} while (block_rec == true);
@@ -271,7 +295,7 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 	while (1) {
 		newsockfd = accept(my_sock, (struct sockaddr *) &cli_addr_1, &cli_len1);
 		if (newsockfd < 0) {
-			perror("Error on accept\n");
+			printf("Error on accept\n");
 			exit(4);
 			WSACleanup();
 		}
@@ -286,8 +310,6 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 
 		printf("\n%s\n", buf);
 	}
-	//printf("\nServer disconnected!");
-	//isExit = true;
 	close(my_sock);
 	WSACleanup();
 	return 0;
@@ -303,6 +325,7 @@ DWORD WINAPI Send(LPVOID newsock) {
 	char mes[100];
 	char receiver[10];
 	char del[] = ":";
+
 
 	char cmd[100];
 	signal(SIGINT, ctrl_c);
@@ -320,11 +343,14 @@ DWORD WINAPI Send(LPVOID newsock) {
 			for (int i = 0; i < MAX_CLIENTS; i++) {
 				strcat(user, clients[i].name);
 				strcat(user, "\n");
+				printf("\n\"%s\"", clients[i].name);
 				if (strcmp("\0", clients[i].name) == 0) {
 					break;
 				}
 			}
-			printf("\n%s", user);
+			printf("\n\"%s\"", user);
+
+
 		}
 		if (strcmp(cmd, "type\n") == 0) {
 			block_rec = true;
@@ -343,17 +369,39 @@ DWORD WINAPI Send(LPVOID newsock) {
 			strcat(msg, del);
 			strcat(msg, mes);
 
+			int cnt;
+			cnt = find_user(receiver);
+
+
+		/*	int counter = 0;
+
+			while (counter < MAX_CLIENTS && clients[counter].unique_id != 0) {
+				if (strcmp(clients[counter].name, receiver) == 0) {
+					ip = clients[counter].ip;
+				}
+				counter++;
+			}*/
+		//	printf("%d ", htonl(ip));
+
+
+			int ip;
 			int port;
-			port = find_user(receiver);
-			if (port == 0) {
+			//htonl(atoi(a));
+
+			if (cnt == -1) {
 				printf("\nUser is not found!");
 			} else {
+				port = clients[cnt].port;
+				ip = clients[cnt].ip;
+				printf("%x ", ip);
 
 				sockaddr_in cli_addr;
 				memset(&cli_addr, 0, sizeof(cli_addr));
 				cli_addr.sin_family = AF_INET;
 				cli_addr.sin_port = htons(port);
-				cli_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+				cli_addr.sin_addr.s_addr = ip; //IP другого клиента
+
+			//	printf("%x %x", INADDR_LOOPBACK, htonl(INADDR_LOOPBACK) );
 
 				SOCKET sock;
 				sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -372,6 +420,7 @@ DWORD WINAPI Send(LPVOID newsock) {
 				if (n < 0) {
 					printf("\nError sending message\n");
 				}
+				//глобальный буфер принт для задержанных сообщений
 				close (sock);
 			}
 			block_rec = false;

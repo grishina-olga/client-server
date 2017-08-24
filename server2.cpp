@@ -17,9 +17,10 @@ typedef struct {
 	char name[10];
 	int unique_id;
 	int port;
+	int IP;
 } client;
 
-client clients[MAX_CLIENTS] = { { "", 0, 0 } };
+client clients[MAX_CLIENTS] = { { "", 0, 0, 0 } };
 
 void display_users(SOCKET sockfd) {
 	int counter = 0;
@@ -70,7 +71,7 @@ int main(int argc, char *argv[]) {
 	SOCKET sockfd;
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
-		perror("Error opening socket");
+		printf("Error opening socket");
 		exit(1);
 		WSACleanup();
 	}
@@ -82,13 +83,13 @@ int main(int argc, char *argv[]) {
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if (bind(sockfd, (sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-		perror("Error on binding");
+		printf("Error on binding");
 		exit(2);
 		WSACleanup();
 	}
 
 	if (listen(sockfd, 5) < 0) {
-		perror("Error on listening");
+		printf("Error on listening");
 		exit(3);
 		WSACleanup();
 	}
@@ -101,13 +102,17 @@ int main(int argc, char *argv[]) {
 		SOCKET newsockfd;
 		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &cli_len);
 		if (newsockfd < 0) {
-			perror("Error on accept\n");
+			printf("Error on accept\n");
 			exit(4);
 			WSACleanup();
 		}
 
-		printf("\nNew client has connected: %s\n",
-				inet_ntoa(cli_addr.sin_addr));
+		printf("\nNew client has connected: %s %d\n",
+				inet_ntoa(cli_addr.sin_addr), cli_addr.sin_port);
+
+		//clients[mycounter].port = cli_addr.sin_port;
+
+		clients[mycounter].IP = cli_addr.sin_addr.s_addr;
 
 		DWORD thID;
 		hThread = CreateThread(NULL, 0, Client, (LPVOID) &newsockfd, 0, &thID);
@@ -136,9 +141,11 @@ DWORD WINAPI Client(LPVOID newsock) {
 
 	int result;
 	int port;
+	int IP;
 	if (mycounter < MAX_CLIENTS) {
 		do {
 			result = unique_name(name);
+
 			if (result == 0) {
 				printf("NEW NAME IS ACCEPTED\n");
 				send(my_sock, "accepted", sizeof("accepted"), 0);
@@ -149,16 +156,24 @@ DWORD WINAPI Client(LPVOID newsock) {
 			}
 		} while (result == -1);
 
+		//ПОРТ
 		recv(my_sock, (char*) &port, sizeof(port), 0);
 
+	//	recv(my_sock, (char*) &IP, sizeof(IP), 0);
+
+//попробовать сразу напряму clients без temp
 		client temp;
-		strcpy(temp.name, name);
-		temp.unique_id = my_sock;
-		temp.port = port;
-		clients[mycounter] = temp;
+		strcpy(clients[mycounter].name, name);
+		clients[mycounter].unique_id = my_sock;
+		clients[mycounter].port = port;
+	//	temp.IP = IP;
+	//	clients[mycounter] = temp;
+
+		//clients[mycounter].port = inet_ntoa(cli_addr.sin_port);
+
 		mycounter++;
 
-		printf("Name: %s   ID: %d   Port: %d\n\n", name, my_sock, port);
+		printf("Name: %s   ID: %d   Port: %d   IP: %d\n\n", name, my_sock, port, IP);
 
 		display_users(my_sock);
 
@@ -219,11 +234,11 @@ DWORD WINAPI Client(LPVOID newsock) {
 					send(sock, (char*) clients, sizeof(clients), 0);
 				}
 			}
-			break;
+		//	break;
 		}
 	}
+	printf("aa\n");
 	mycounter--;
 	close(my_sock);
-	//WSACleanup();
 	return 0;
 }
