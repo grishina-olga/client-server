@@ -6,12 +6,33 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
-
 //#include <pthread.h>
+#define MAX_CLIENTS 100
 
 DWORD WINAPI Recv_serv(LPVOID newsock);
 DWORD WINAPI Recv_cli(LPVOID newsock);
 DWORD WINAPI Send(LPVOID newsock);
+
+typedef struct {
+	char name[10];
+	int unique_id;
+	int port;
+} client;
+
+client clients[MAX_CLIENTS] = { { "", 0, 0 } };
+
+int find_user(char* name) {
+	int counter = 0;
+	int port;
+	while (counter < MAX_CLIENTS && clients[counter].unique_id != 0) {
+		if (strcmp(clients[counter].name, name) == 0) {
+			port = clients[counter].port;
+			return port;
+		}
+		counter++;
+	}
+	return 0;
+}
 
 char name[10];
 bool isExit = false;
@@ -68,16 +89,6 @@ int main(int argc, char *argv[]) {
 
 	printf("Connected... \n\n");
 
-	char active[1000];
-	memset(active, 0, 1000);
-	int n = recv(sock_serv, active, sizeof(active), 0);
-	if (n < 0) {
-		printf("\nError reading from socket");
-		exit(3);
-		WSACleanup();
-	}
-	printf("The active users are:\n%s", active);
-
 	printf("\nEnter your name: ");
 
 	signal(SIGINT, ctrl_c);
@@ -86,11 +97,12 @@ int main(int argc, char *argv[]) {
 
 	int size = strlen(name) - 1;
 	name[size] = '\0';
+
 	send(sock_serv, name, sizeof(name), 0);
 
 	char msg[100];
 	do {
-		memset(msg, 0, 1000);
+		memset(msg, 0, 100);
 		int n = recv(sock_serv, msg, sizeof(msg), 0);
 		if (n < 0) {
 			printf("\nError reading from socket");
@@ -98,7 +110,6 @@ int main(int argc, char *argv[]) {
 			exit(3);
 			WSACleanup();
 		}
-
 		if (strcmp(msg, "err") == 0) {
 			printf("The server is full, please try later!\n");
 			close(sock_serv);
@@ -141,7 +152,26 @@ int main(int argc, char *argv[]) {
 		cli_addr.sin_port = htons(++addr);
 	}
 
-	send(sock_serv, (char*) &addr, sizeof((char*) &addr), 0);
+	send(sock_serv, (char*) &addr, sizeof(addr), 0);
+
+	char active[1000];
+	memset(active, 0, 1000);
+
+	int n = recv(sock_serv, (char*) clients, sizeof(clients), 0);
+	if (n < 0) {
+		printf("\nError reading from socket");
+		exit(3);
+		WSACleanup();
+	}
+
+	for (int i = 0; i < MAX_CLIENTS; i++) {
+		strcat(active, clients[i].name);
+		strcat(active, "\n");
+		if (strcmp("\0", clients[i].name) == 0) {
+			break;
+		}
+	}
+	printf("\nThe active users are:\n%s", active);
 
 	if (listen(sock_cli, 5) < 0) {
 		perror("Error on listening");
@@ -150,7 +180,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	printf("\nYou are ready. \n"
-			"Type something to send a message\n"
+			"Type 'type' 	  to send a message\n"
 			"Type 'quit' 	  to quit\n"
 			"Type 'user list'  to get a user list\n\n");
 
@@ -183,6 +213,8 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+bool block_rec = false;
+
 DWORD WINAPI Recv_serv(LPVOID newsock) {
 	SOCKET my_sock;
 	my_sock = ((SOCKET *) newsock)[0];
@@ -190,6 +222,12 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 	while (1) {
 		char msg[100];
 		memset(msg, 0, 100);
+
+		char msg1[100];
+		memset(msg1, 0, 100);
+
+		char buf[1000];
+
 		int n = recv(my_sock, msg, sizeof(msg), 0);
 		if (n < 0)
 			break;
@@ -198,10 +236,18 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 			close(my_sock);
 			WSACleanup();
 			exit(1);
+		} else {
+			recv(my_sock, (char*) clients, sizeof(clients), 0);
 		}
-		printf("\n%s\n", msg);
-	}
 
+		do {
+			memset(buf, 0, 1000);
+			strcat(buf, msg);
+		} while (block_rec == true);
+
+		printf("\n%s\n", buf);
+
+	}
 	printf("\nServer disconnected!");
 	isExit = true;
 	close(my_sock);
@@ -216,6 +262,8 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 	char msg[100];
 	memset(msg, 0, 100);
 
+	char buf[1000];
+
 	sockaddr_in cli_addr_1;
 	int cli_len1 = sizeof(cli_addr_1);
 	SOCKET newsockfd;
@@ -227,16 +275,19 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 			exit(4);
 			WSACleanup();
 		}
-
-
-		int n =	recv(newsockfd, msg, sizeof(msg), 0);
+		int n = recv(newsockfd, msg, sizeof(msg), 0);
 		if (n < 0)
 			break;
-		printf("\n%s\n", msg);
 
+		do {
+			memset(buf, 0, 1000);
+			strcat(buf, msg);
+		} while (block_rec == true);
+
+		printf("\n%s\n", buf);
 	}
-	printf("\nServer disconnected!");
-	isExit = true;
+	//printf("\nServer disconnected!");
+	//isExit = true;
 	close(my_sock);
 	WSACleanup();
 	return 0;
@@ -253,57 +304,80 @@ DWORD WINAPI Send(LPVOID newsock) {
 	char receiver[10];
 	char del[] = ":";
 
+	char cmd[100];
 	signal(SIGINT, ctrl_c);
 
 	while (1) {
+		fgets(cmd, sizeof(cmd), stdin);
 
-		fgets(mes, sizeof(mes), stdin);
-
-		if (strcmp(mes, "quit\n") == 0)
+		if (strcmp(cmd, "quit\n") == 0) {
 			quit(my_sock);
-
-		if (strcmp(mes, "user list\n") == 0)
-			send(my_sock, "user list", sizeof("user list"), 0);
-
-		int size = strlen(mes) - 1;
-		mes[size] = '\0';
-
-		printf("to(port):");
-		fgets(receiver, 10, stdin);
-
-		size = strlen(receiver) - 1;
-		receiver[size] = '\0';
-
-		strcpy(msg, name);
-		strcat(msg, del);
-		strcat(msg, mes);
-
-		sockaddr_in cli_addr;
-		memset(&cli_addr, 0, sizeof(cli_addr));
-		cli_addr.sin_family = AF_INET;
-		cli_addr.sin_port = htons(atoi(receiver));
-		cli_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-
-		SOCKET sock;
-		sock = socket(AF_INET, SOCK_STREAM, 0);
-		if (sock < 0) {
-			printf("Error opening socket");
-			exit(1);
-			WSACleanup();
 		}
 
-		if (connect(sock, (struct sockaddr *) &cli_addr, sizeof(cli_addr))
-				< 0) {
-			printf("\nError connecting");
-			//exit(2);
-			//WSACleanup();
+		if (strcmp(cmd, "user list\n") == 0) {
+			char user[1000];
+			memset(user, 0, 1000);
+			for (int i = 0; i < MAX_CLIENTS; i++) {
+				strcat(user, clients[i].name);
+				strcat(user, "\n");
+				if (strcmp("\0", clients[i].name) == 0) {
+					break;
+				}
+			}
+			printf("\n%s", user);
+		}
+		if (strcmp(cmd, "type\n") == 0) {
+			block_rec = true;
+			fgets(mes, sizeof(mes), stdin);
+
+			int size = strlen(mes) - 1;
+			mes[size] = '\0';
+
+			printf("to:");
+			fgets(receiver, 10, stdin);
+
+			size = strlen(receiver) - 1;
+			receiver[size] = '\0';
+
+			strcpy(msg, name);
+			strcat(msg, del);
+			strcat(msg, mes);
+
+			int port;
+			port = find_user(receiver);
+			if (port == 0) {
+				printf("\nUser is not found!");
+			} else {
+
+				sockaddr_in cli_addr;
+				memset(&cli_addr, 0, sizeof(cli_addr));
+				cli_addr.sin_family = AF_INET;
+				cli_addr.sin_port = htons(port);
+				cli_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+				SOCKET sock;
+				sock = socket(AF_INET, SOCK_STREAM, 0);
+				if (sock < 0) {
+					printf("Error opening socket");
+					exit(1);
+					WSACleanup();
+				}
+
+				if (connect(sock, (struct sockaddr *) &cli_addr,
+						sizeof(cli_addr)) < 0) {
+					printf("\nError connecting");
+				}
+
+				int n = send(sock, msg, sizeof(msg), 0);
+				if (n < 0) {
+					printf("\nError sending message\n");
+				}
+				close (sock);
+			}
+			block_rec = false;
+
 		}
 
-		int n = send(sock, msg, sizeof(msg), 0);
-		if (n < 0) {
-			printf("\nError sending message");
-		}
-		close(sock);
 	}
 	close(my_sock);
 	WSACleanup();
