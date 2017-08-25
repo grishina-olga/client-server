@@ -214,7 +214,7 @@ DWORD WINAPI Client(LPVOID newsock) {
 			strcat(log_quit, "\n");
 			fputs(log_quit, logfile);
 
-			for (int i = 0; i <= mycounter; i++) {
+			for (int i = 0; i < mycounter; i++) {
 				if (strcmp(clients[i].name, name) == 0) {
 					printf("\nuser removed");
 					for (int j = i; j <= mycounter; j++) {
@@ -229,7 +229,7 @@ DWORD WINAPI Client(LPVOID newsock) {
 				}
 			}
 			SOCKET sock;
-			for (int i = 0; i <= mycounter; i++) {
+			for (int i = 0; i < mycounter-1; i++) {
 				sock = clients[i].unique_id;
 				if (sock != my_sock) {
 					my_send(sock, log_quit, sizeof(log_quit));
