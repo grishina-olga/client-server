@@ -164,7 +164,7 @@ DWORD WINAPI Client(LPVOID newsock) {
 
 	while (my_sock > 0) {
 		int n = recv(my_sock, msg, sizeof(msg), 0);
-		if ( (n > 0) || (n < 0)) {
+//		if ( (n > 0) || (n < 0)) {
 		//if (strcmp(msg, "quit") == 0) {
 			strcat(log_quit, "User disconnected: ");
 			strcat(log_quit, name);
@@ -198,7 +198,7 @@ DWORD WINAPI Client(LPVOID newsock) {
 
 				}
 			}
-		}
+//		}
 		break;
 	}
 	//mycounter--;
