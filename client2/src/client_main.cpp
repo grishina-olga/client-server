@@ -6,83 +6,33 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
-//#include <pthread.h>
+#include "cli_client.h"
 
-#define MAX_CLIENTS 100
+extern bool isExit;// = false;
 
 DWORD WINAPI Recv_serv(LPVOID newsock);
 DWORD WINAPI Recv_cli(LPVOID newsock);
 DWORD WINAPI Send(LPVOID newsock);
 
-struct client {
-	char name[10];
-	int unique_id;
-	int port;
-	int IP;
-};
+int my_send(SOCKET s, const char* buf, int size);
+int find_user(char* name);
 
-client clients[MAX_CLIENTS] = { { "", 0, 0, 0 } };
-
-int my_send(SOCKET s, const char* buf, int size){
-	int n = send(s, buf, size, 0);
-	if (n < 0) {
-		printf("Error sending\n");
-	}
-	return 0;
-}
-
-void trim(char *s) {
-	unsigned int i = 0, j;
-	while ((s[i] == ' ') || (s[i] == '\t')) {
-		i++;
-	}
-	if (i > 0) {
-		for (j = 0; j < strlen(s); j++) {
-			s[j] = s[j + i];
-		}
-		s[j] = '\0';
-	}
-	i = strlen(s) - 1;
-	while ((s[i] == ' ') || (s[i] == '\t')) {
-		i--;
-	}
-	if (i < (strlen(s) - 1)) {
-		s[i + 1] = '\0';
-	}
-}
-
-int find_user(char* name) {
-	int counter = 0;
-	//int port;
-	while (counter < MAX_CLIENTS && clients[counter].unique_id != 0) {
-		if (strcmp(clients[counter].name, name) == 0) {
-			//port = clients[counter].port;
-			return counter;
-		}
-		counter++;
-	}
-	return -1;
-}
-
-char name[10];
-bool isExit = false;
-
-void quit(int sock) {
-	my_send(sock, "quit", strlen("quit"));
-	printf("\nYou are now quitting!\n");
-	close(sock);
-	WSACleanup();
-	exit(1);
-}
+void trim(char *s);
+void quit(int sock);
 
 void ctrl_c(int a) {
 	isExit = true;
 }
 
+extern client clients[MAX_CLIENTS];
+
 char help[] = "Type 'type' 	  to send a message\n"
 		"Type 'quit' 	  to quit\n"
 		"Type 'user list'  to get a user list\n"
 		"Type 'help' 	  to get a help\n\n";
+
+char name[10];
+extern bool isExit;
 
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
@@ -193,6 +143,12 @@ int main(int argc, char *argv[]) {
 		cli_addr.sin_port = htons(++addr);
 	}
 
+	if (listen(sock_cli, 5) < 0) {
+			printf("Error on listening: %d", WSAGetLastError());
+			exit(3);
+			WSACleanup();
+		}
+
 	my_send(sock_serv, (char*) &addr, sizeof(addr));
 
 	char active[1000];
@@ -214,11 +170,7 @@ int main(int argc, char *argv[]) {
 	}
 	printf("\nThe active users are:\n%s", active);
 
-	if (listen(sock_cli, 5) < 0) {
-		printf("Error on listening: %d", WSAGetLastError());
-		exit(3);
-		WSACleanup();
-	}
+
 
 	printf("\nYou are ready. \n%s", help);
 
@@ -265,22 +217,21 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 		int n = recv(my_sock, msg, sizeof(msg), 0);
 		if (n < 0)
 			break;
-
-		if (strcmp(msg, "quit") == 0) {
+		/*if (strcmp(msg, "quit") == 0) {
 			close(my_sock);
 			WSACleanup();
 			exit(1);
-		} else {
-			recv(my_sock, (char*) clients, sizeof(clients), 0);
-			if (n < 0)
-				break;
-		}
+		} else {*/
+		recv(my_sock, (char*) clients, sizeof(clients), 0);
+		if (n < 0)
+			break;
+		//}
 
 		if (block_rec == true) {
 			strcat(global_recv_buf, msg);
 			strcat(global_recv_buf, "\n");
 		} else {
-			printf("\n%s\n", msg);
+			printf("%s\n", msg);
 		}
 	}
 	printf("\nServer disconnected!\n");
@@ -316,7 +267,7 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 			strcat(global_recv_buf, msg);
 			strcat(global_recv_buf, "\n");
 		} else {
-			printf("\n%s\n", msg);
+			printf("%s\n", msg);
 		}
 	}
 	close(my_sock);
@@ -350,8 +301,9 @@ DWORD WINAPI Send(LPVOID newsock) {
 				if (strcmp("\0", clients[i].name) == 0) {
 					break;
 				}
-				printf("\n%s\n", clients[i].name);
+				printf("\n%s", clients[i].name);
 			}
+			printf("\n");
 		}
 
 		if (strcmp(cmd, "help\n") == 0) {
@@ -397,12 +349,12 @@ DWORD WINAPI Send(LPVOID newsock) {
 				SOCKET sock;
 				sock = socket(AF_INET, SOCK_STREAM, 0);
 				if (sock < 0) {
-					printf("Error opening socket: %d", WSAGetLastError());
+					printf("Error opening socket: %d\n", WSAGetLastError());
 				}
 
 				if (connect(sock, (struct sockaddr *) &cli_addr,
 						sizeof(cli_addr)) < 0) {
-					printf("\nError connecting: %d", WSAGetLastError());
+					printf("\nError connecting: %d\n", WSAGetLastError());
 				}
 
 				my_send(sock, msg, sizeof(msg));
@@ -416,4 +368,3 @@ DWORD WINAPI Send(LPVOID newsock) {
 	WSACleanup();
 	return 0;
 }
-

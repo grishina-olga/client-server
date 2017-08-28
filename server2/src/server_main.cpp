@@ -5,62 +5,19 @@
 #include <windows.h>
 #include <unistd.h>
 #include <string.h>
+#include "serv_client.h"
 
-#define MAX_CLIENTS 100
+int mycounter = 0;
+FILE *logfile;
 
 DWORD WINAPI Client(LPVOID newsock);
 
-FILE *logfile;
-int mycounter = 0;
+int my_send(SOCKET s, const char* buf, int size);
+int unique_name(char* name);
 
-typedef struct {
-	char name[10];
-	int unique_id;
-	int port;
-	int IP;
-} client;
+void display_users(SOCKET sockfd);
 
-client clients[MAX_CLIENTS] = { { "", 0, 0, 0 } };
-
-int my_send(SOCKET s, const char* buf, int size){
-	int n = send(s, buf, size, 0);
-	if (n < 0) {
-		printf("Error sending: %d\n", WSAGetLastError());
-	}
-	return 0;
-}
-
-void display_users(SOCKET sockfd) {
-	int counter = 0;
-	char s[100];
-	s[0] = 0;
-
-	while ((counter < MAX_CLIENTS) && clients[counter].unique_id != 0) {
-		if (counter == 0) {
-			strcpy(s, clients[counter].name);
-		} else {
-			strcat(s, clients[counter].name);
-		}
-		strcat(s, "\n");
-		counter++;
-	}
-	printf("Printing active users:\n");
-	printf("%s\n", s);
-
-	my_send(sockfd, (char*) clients, sizeof(clients));
-}
-
-int unique_name(char* name) {
-	int counter = 0;
-	while (counter < MAX_CLIENTS && clients[counter].unique_id != 0) {
-		if (strcmp(clients[counter].name, name) == 0) {
-			printf("User name already exists\n");
-			return -1;
-		}
-		counter++;
-	}
-	return 0;
-}
+extern client clients[MAX_CLIENTS];
 
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
@@ -115,7 +72,6 @@ int main(int argc, char *argv[]) {
 		printf("\nNew client has connected: %s\n",
 				inet_ntoa(cli_addr.sin_addr));
 
-		//clients[mycounter].port = cli_addr.sin_port;
 		clients[mycounter].IP = cli_addr.sin_addr.s_addr;
 
 		DWORD thID;
@@ -126,6 +82,7 @@ int main(int argc, char *argv[]) {
 	CloseHandle(hThread);
 	return 0;
 }
+
 
 DWORD WINAPI Client(LPVOID newsock) {
 	SOCKET my_sock;
@@ -192,7 +149,6 @@ DWORD WINAPI Client(LPVOID newsock) {
 				my_send(sock, new_user, sizeof(new_user));
 				my_send(sock, (char*) clients, sizeof(clients));
 			}
-
 		}
 	} else {
 		printf("We can not support new client!\n");
@@ -217,19 +173,23 @@ DWORD WINAPI Client(LPVOID newsock) {
 			for (int i = 0; i < mycounter; i++) {
 				if (strcmp(clients[i].name, name) == 0) {
 					printf("\nuser removed");
-					for (int j = i; j <= mycounter; j++) {
+					for (int j = i; j < mycounter; j++) {
 						clients[j] = clients[j + 1];
 					}
 					if(n > 0) {
-						my_send(my_sock, "quit", strlen("quit"));
+					//	my_send(my_sock, "quit", strlen("quit"));
 						printf("\nclient is normally leaving: %d\n", my_sock);
 					}
 					else
 						printf("\nclient is abnormally leaving: %d\n", my_sock);
+					mycounter--;
 				}
+
+				//printf("\n'%s'\n", clients[i].name);
+
 			}
 			SOCKET sock;
-			for (int i = 0; i < mycounter-1; i++) {
+			for (int i = 0; i < mycounter; i++) {
 				sock = clients[i].unique_id;
 				if (sock != my_sock) {
 					my_send(sock, log_quit, sizeof(log_quit));
@@ -239,7 +199,7 @@ DWORD WINAPI Client(LPVOID newsock) {
 		}
 		break;
 	}
-	mycounter--;
+	//mycounter--;
 	close(my_sock);
 	return 0;
 }
