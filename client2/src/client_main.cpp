@@ -214,7 +214,7 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 		char msg[100];
 		memset(msg, 0, 100);
 
-		int n = recv(my_sock, msg, sizeof(msg), 0);
+		int n = recv(my_sock, (char*) clients, sizeof(clients), 0);
 		if (n < 0)
 			break;
 		/*if (strcmp(msg, "quit") == 0) {
@@ -222,8 +222,8 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 			WSACleanup();
 			exit(1);
 		} else {*/
-		recv(my_sock, (char*) clients, sizeof(clients), 0);
-		if (n < 0)
+		int m = recv(my_sock, msg, sizeof(msg), 0);
+		if (m < 0)
 			break;
 		//}
 
@@ -267,7 +267,7 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 			strcat(global_recv_buf, msg);
 			strcat(global_recv_buf, "\n");
 		} else {
-			printf("%s\n", msg);
+			printf("\n%s\n", msg);
 		}
 	}
 	close(my_sock);
@@ -301,7 +301,7 @@ DWORD WINAPI Send(LPVOID newsock) {
 				if (strcmp("\0", clients[i].name) == 0) {
 					break;
 				}
-				printf("\n%s", clients[i].name);
+				printf("\n'%s'", clients[i].name);
 			}
 			printf("\n");
 		}
@@ -335,7 +335,7 @@ DWORD WINAPI Send(LPVOID newsock) {
 			int port;
 
 			if (cnt == -1) {
-				printf("\nUser is not found!");
+				printf("\nUser is not found!\n");
 			} else {
 				port = clients[cnt].port;
 				ip = clients[cnt].IP;
@@ -361,6 +361,7 @@ DWORD WINAPI Send(LPVOID newsock) {
 				close(sock);
 			}
 			printf("\n%s\n", global_recv_buf);
+			memset(global_recv_buf, 0, 1000);
 			block_rec = false;
 		}
 	}

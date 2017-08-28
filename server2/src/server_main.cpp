@@ -146,8 +146,9 @@ DWORD WINAPI Client(LPVOID newsock) {
 		for (int i = 0; i < mycounter; i++) {
 			sock = clients[i].unique_id;
 			if (sock != my_sock) {
-				my_send(sock, new_user, sizeof(new_user));
 				my_send(sock, (char*) clients, sizeof(clients));
+				my_send(sock, new_user, sizeof(new_user));
+
 			}
 		}
 	} else {
@@ -192,8 +193,9 @@ DWORD WINAPI Client(LPVOID newsock) {
 			for (int i = 0; i < mycounter; i++) {
 				sock = clients[i].unique_id;
 				if (sock != my_sock) {
-					my_send(sock, log_quit, sizeof(log_quit));
 					my_send(sock, (char*) clients, sizeof(clients));
+					my_send(sock, log_quit, sizeof(log_quit));
+
 				}
 			}
 		}
