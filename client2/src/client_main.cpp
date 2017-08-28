@@ -267,7 +267,7 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 			strcat(global_recv_buf, msg);
 			strcat(global_recv_buf, "\n");
 		} else {
-			printf("\n%s\n", msg);
+			printf("%s\n", msg);
 		}
 	}
 	close(my_sock);
@@ -327,6 +327,7 @@ DWORD WINAPI Send(LPVOID newsock) {
 			strcpy(msg, name);
 			strcat(msg, del);
 			strcat(msg, mes);
+			strcat(msg, "\n");
 
 			int cnt;
 			cnt = find_user(receiver);
