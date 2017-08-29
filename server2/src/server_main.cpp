@@ -175,7 +175,11 @@ DWORD WINAPI Client(LPVOID newsock) {
 				if (strcmp(clients[i].name, name) == 0) {
 					printf("\nuser removed");
 					for (int j = i; j < mycounter; j++) {
-						clients[j] = clients[j + 1];
+						if (j == MAX_CLIENTS - 1)
+							memset(&clients[j], 0, sizeof(client));
+						else
+							clients[j] = clients[j + 1];
+
 					}
 					if(n > 0) {
 					//	my_send(my_sock, "quit", strlen("quit"));
