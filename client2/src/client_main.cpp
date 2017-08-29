@@ -110,6 +110,7 @@ int main(int argc, char *argv[]) {
 			do {
 				printf("\nEnter your name: ");
 				fgets(name, 10, stdin);
+				trim(name);
 			} while (strcmp(name, "\n") == 0);
 
 			int size = strlen(name) - 1;
