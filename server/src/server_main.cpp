@@ -20,7 +20,7 @@ void display_users(SOCKET sockfd);
 
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	WSAStartup(MAKEWORD(2, 0), &wsaData);
 
 	logfile = fopen("logfile.txt", "w");
 
