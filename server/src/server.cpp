@@ -35,7 +35,6 @@ int display_users(SOCKET sockfd) {
 	printf("%s\n", s);
 
 	int n = my_send(sockfd, (char*) clients, sizeof(clients));
-	//printf("\n%d \n", n);
 	return n;
 }
 

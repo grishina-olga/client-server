@@ -7,6 +7,7 @@
 #include <string.h>
 #include "serv_client.h"
 
+extern client clients[MAX_CLIENTS];
 int mycounter = 0;
 FILE *logfile;
 
@@ -16,8 +17,6 @@ int my_send(SOCKET s, const char* buf, int size);
 int unique_name(char* name);
 
 void display_users(SOCKET sockfd);
-
-extern client clients[MAX_CLIENTS];
 
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
@@ -46,14 +45,15 @@ int main(int argc, char *argv[]) {
 
 	if (bind(sockfd, (sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
 		printf("Error on binding: %d\n", WSAGetLastError());
-		exit(2);
 		WSACleanup();
+		exit(2);
 	}
 
 	if (listen(sockfd, 5) < 0) {
-		printf("Error on listening");
-		exit(3);
+		printf("Error on listening: %d\n", WSAGetLastError());
+		;
 		WSACleanup();
+		exit(3);
 	}
 
 	printf("The server is now running... %d\n\n", sockfd);
@@ -65,8 +65,8 @@ int main(int argc, char *argv[]) {
 		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &cli_len);
 		if (newsockfd < 0) {
 			printf("Error on accept: %d\n", WSAGetLastError());
-			exit(4);
 			WSACleanup();
+			exit(4);
 		}
 
 		printf("\nNew client has connected: %s\n",
@@ -77,12 +77,10 @@ int main(int argc, char *argv[]) {
 		DWORD thID;
 		hThread = CreateThread(NULL, 0, Client, (LPVOID) &newsockfd, 0, &thID);
 	}
-
 	close(sockfd);
 	CloseHandle(hThread);
 	return 0;
 }
-
 
 DWORD WINAPI Client(LPVOID newsock) {
 	SOCKET my_sock;
@@ -95,8 +93,8 @@ DWORD WINAPI Client(LPVOID newsock) {
 	int n = recv(my_sock, name, sizeof(name), 0);
 	if (n < 0) {
 		printf("\nError reading from socket: %d\n", WSAGetLastError());
-		exit(5);
 		WSACleanup();
+		exit(5);
 	}
 
 	int result;
@@ -105,25 +103,21 @@ DWORD WINAPI Client(LPVOID newsock) {
 	if (mycounter < MAX_CLIENTS) {
 		do {
 			result = unique_name(name);
-
 			if (result == 0) {
 				printf("NEW NAME IS ACCEPTED\n");
-				//send(my_sock, "accepted", strlen("accepted"), 0);
 				my_send(my_sock, "accepted", strlen("accepted"));
 			} else {
 				printf("ERROR: name already in use\n");
-				//send(my_sock, "exists", strlen("exists"), 0);
 				my_send(my_sock, "exists", strlen("exists"));
 				recv(my_sock, name, sizeof(name), 0);
 			}
 		} while (result == -1);
 
-		//ÏÎÐÒ
 		recv(my_sock, (char*) &port, sizeof(port), 0);
 		if (n < 0) {
 			printf("\nError reading from socket: %d\n", WSAGetLastError());
-			exit(5);
 			WSACleanup();
+			exit(5);
 		}
 
 		strcpy(clients[mycounter].name, name);
@@ -139,7 +133,6 @@ DWORD WINAPI Client(LPVOID newsock) {
 		char new_user[100] = "New user has connected: ";
 		strcat(new_user, name);
 		strcat(new_user, "\n");
-
 		fputs(new_user, logfile);
 
 		SOCKET sock;
@@ -148,7 +141,6 @@ DWORD WINAPI Client(LPVOID newsock) {
 			if (sock != my_sock) {
 				my_send(sock, (char*) clients, sizeof(clients));
 				my_send(sock, new_user, sizeof(new_user));
-
 			}
 		}
 	} else {
@@ -164,48 +156,39 @@ DWORD WINAPI Client(LPVOID newsock) {
 
 	while (my_sock > 0) {
 		int n = recv(my_sock, msg, sizeof(msg), 0);
-//		if ( (n > 0) || (n < 0)) {
-		//if (strcmp(msg, "quit") == 0) {
-			strcat(log_quit, "User disconnected: ");
-			strcat(log_quit, name);
-			strcat(log_quit, "\n");
-			fputs(log_quit, logfile);
+		strcat(log_quit, "User disconnected: ");
+		strcat(log_quit, name);
+		strcat(log_quit, "\n");
+		fputs(log_quit, logfile);
 
-			for (int i = 0; i < mycounter; i++) {
-				if (strcmp(clients[i].name, name) == 0) {
-					printf("\nuser removed");
-					for (int j = i; j < mycounter; j++) {
-						if (j == MAX_CLIENTS - 1)
-							memset(&clients[j], 0, sizeof(client));
-						else
-							clients[j] = clients[j + 1];
-
-					}
-					if(n > 0) {
-					//	my_send(my_sock, "quit", strlen("quit"));
-						printf("\nclient is normally leaving: %d\n", my_sock);
-					}
-					else
-						printf("\nclient is abnormally leaving: %d\n", my_sock);
-					mycounter--;
+		for (int i = 0; i < mycounter; i++) {
+			if (strcmp(clients[i].name, name) == 0) {
+				printf("\nuser removed");
+				for (int j = i; j < mycounter; j++) {
+					if (j == MAX_CLIENTS - 1) {
+						memset(&clients[j], 0, sizeof(client));
+					} else
+						clients[j] = clients[j + 1];
 				}
-
-				//printf("\n'%s'\n", clients[i].name);
-
-			}
-			SOCKET sock;
-			for (int i = 0; i < mycounter; i++) {
-				sock = clients[i].unique_id;
-				if (sock != my_sock) {
-					my_send(sock, (char*) clients, sizeof(clients));
-					my_send(sock, log_quit, sizeof(log_quit));
-
+				if (n > 0) {
+					printf("\nclient is normally leaving: %d\n", my_sock);
+				} else {
+					printf("\nclient is abnormally leaving: %d\n", my_sock);
 				}
+				mycounter--;
 			}
-//		}
+		}
+
+		SOCKET sock;
+		for (int i = 0; i < mycounter; i++) {
+			sock = clients[i].unique_id;
+			if (sock != my_sock) {
+				my_send(sock, (char*) clients, sizeof(clients));
+				my_send(sock, log_quit, sizeof(log_quit));
+			}
+		}
 		break;
 	}
-	//mycounter--;
 	close(my_sock);
 	return 0;
 }

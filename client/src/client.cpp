@@ -29,12 +29,12 @@ void trim(char *s) {
 		}
 		s[j] = '\0';
 	}
-	i = strlen(s) - 1;
+	i = strlen(s) - 2;
 	while ((s[i] == ' ') || (s[i] == '\t')) {
 		i--;
 	}
-	if (i < (strlen(s) - 1)) {
-		s[i + 1] = '\0';
+	if (i < (strlen(s) - 2 )) {
+		s[i + 2] = '\0';
 	}
 }
 

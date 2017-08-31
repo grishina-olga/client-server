@@ -8,7 +8,8 @@
 #include <signal.h>
 #include "cli_client.h"
 
-extern bool isExit;// = false;
+extern bool isExit;
+extern client clients[MAX_CLIENTS];
 
 DWORD WINAPI Recv_serv(LPVOID newsock);
 DWORD WINAPI Recv_cli(LPVOID newsock);
@@ -24,15 +25,11 @@ void ctrl_c(int a) {
 	isExit = true;
 }
 
-extern client clients[MAX_CLIENTS];
-
+char name[10];
 char help[] = "Type 'type' 	  to send a message\n"
 		"Type 'quit' 	  to quit\n"
 		"Type 'user list'  to get a user list\n"
 		"Type 'help' 	  to get a help\n\n";
-
-char name[10];
-extern bool isExit;
 
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
@@ -47,8 +44,8 @@ int main(int argc, char *argv[]) {
 	server = gethostbyname(argv[1]);
 	if (server == NULL) {
 		printf("ERROR, no such host\n");
-		exit(2);
 		WSACleanup();
+		exit(1);
 	}
 
 	sockaddr_in serv_addr;
@@ -61,25 +58,25 @@ int main(int argc, char *argv[]) {
 	sock_serv = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock_serv < 0) {
 		printf("Error opening socket: %d\n", WSAGetLastError());
-		exit(1);
 		WSACleanup();
+		exit(1);
 	}
 
 	if (connect(sock_serv, (struct sockaddr *) &serv_addr, sizeof(serv_addr))
 			< 0) {
 		printf("\nError connecting: %d", WSAGetLastError());
-		exit(2);
 		WSACleanup();
+		exit(2);
 	}
 
 	printf("Connected... \n\n");
+
 	signal(SIGINT, ctrl_c);
 
 	do {
 		printf("\nEnter your name: ");
 		fgets(name, 10, stdin);
 		trim(name);
-
 	} while (strcmp(name, "\n") == 0);
 
 	int size = strlen(name) - 1;
@@ -94,13 +91,14 @@ int main(int argc, char *argv[]) {
 		if (n < 0) {
 			printf("\nError reading from socket");
 			printf("\nServer disconnected!");
-			exit(3);
 			WSACleanup();
+			exit(3);
 		}
 		if (strcmp(msg, "err") == 0) {
 			printf("The server is full, please try later!\n");
 			close(sock_serv);
-			exit(1);
+			WSACleanup();
+			exit(4);
 		}
 
 		if (strcmp(msg, "accepted") == 0) {
@@ -115,6 +113,7 @@ int main(int argc, char *argv[]) {
 
 			int size = strlen(name) - 1;
 			name[size] = '\0';
+
 			my_send(sock_serv, name, sizeof(name));
 		}
 	} while (strcmp(msg, "exists") == 0);
@@ -123,8 +122,8 @@ int main(int argc, char *argv[]) {
 	sock_cli = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock_cli < 0) {
 		printf("Error opening socket: %d\n", WSAGetLastError());
-		exit(1);
 		WSACleanup();
+		exit(1);
 	}
 
 	int addr = 50000;
@@ -138,16 +137,16 @@ int main(int argc, char *argv[]) {
 	while (bind(sock_cli, (sockaddr *) &cli_addr, sizeof(cli_addr))) {
 		if (addr >= max_addr) {
 			printf("Error on binding: %d", WSAGetLastError());
-			exit(2);
 			WSACleanup();
+			exit(2);
 		}
 		cli_addr.sin_port = htons(++addr);
 	}
 
 	if (listen(sock_cli, 5) < 0) {
 			printf("Error on listening: %d", WSAGetLastError());
-			exit(3);
 			WSACleanup();
+			exit(3);
 		}
 
 	my_send(sock_serv, (char*) &addr, sizeof(addr));
@@ -158,8 +157,8 @@ int main(int argc, char *argv[]) {
 	int n = recv(sock_serv, (char*) clients, sizeof(clients), 0);
 	if (n < 0) {
 		printf("\nError reading from socket");
-		exit(3);
 		WSACleanup();
+		exit(3);
 	}
 
 	for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -170,9 +169,6 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	printf("\nThe active users are:\n%s", active);
-
-
-
 	printf("\nYou are ready. \n%s", help);
 
 	DWORD thID_r_s;
@@ -193,14 +189,14 @@ int main(int argc, char *argv[]) {
 	while (isExit == false)
 		Sleep(1);
 
-	quit(sock_serv);
-
 	close(sock_serv);
 	close(sock_cli);
 
 	CloseHandle(hThread_recv_s);
 	CloseHandle(hThread_recv_c);
 	CloseHandle(hThread_send);
+
+	quit(sock_serv);
 	return 0;
 }
 
@@ -216,17 +212,13 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 		memset(msg, 0, 100);
 
 		int n = recv(my_sock, (char*) clients, sizeof(clients), 0);
-		if (n < 0)
+		if (n < 0) {
 			break;
-		/*if (strcmp(msg, "quit") == 0) {
-			close(my_sock);
-			WSACleanup();
-			exit(1);
-		} else {*/
+		}
 		int m = recv(my_sock, msg, sizeof(msg), 0);
-		if (m < 0)
+		if (m < 0) {
 			break;
-		//}
+		}
 
 		if (block_rec == true) {
 			strcat(global_recv_buf, msg);
@@ -236,9 +228,9 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 		}
 	}
 	printf("\nServer disconnected!\n");
-	isExit = true;
 	close(my_sock);
 	WSACleanup();
+	isExit = true;
 	return 0;
 }
 
@@ -251,18 +243,20 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 
 	sockaddr_in cli_addr_1;
 	int cli_len1 = sizeof(cli_addr_1);
+
 	SOCKET newsockfd;
 
 	while (1) {
 		newsockfd = accept(my_sock, (struct sockaddr *) &cli_addr_1, &cli_len1);
 		if (newsockfd < 0) {
 			printf("Error on accept: %d\n", WSAGetLastError());
-			exit(4);
 			WSACleanup();
+			exit(4);
 		}
 		int n = recv(newsockfd, msg, sizeof(msg), 0);
-		if (n < 0)
+		if (n < 0) {
 			break;
+		}
 
 		if (block_rec == true) {
 			strcat(global_recv_buf, msg);
@@ -286,8 +280,8 @@ DWORD WINAPI Send(LPVOID newsock) {
 	char mes[100];
 	char receiver[10];
 	char del[] = ": ";
-
 	char cmd[100];
+
 	signal(SIGINT, ctrl_c);
 
 	while (1) {
