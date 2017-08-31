@@ -38,6 +38,13 @@ void trim(char *s) {
 	}
 }
 
+void name_correct(char *s, int index) {
+	while(s[index] == '\n') {
+		s[index] = '\0';
+		index--;
+	}
+}
+
 int find_user(char* name) {
 	int counter = 0;
 	while (counter < MAX_CLIENTS && clients[counter].unique_id != 0) {

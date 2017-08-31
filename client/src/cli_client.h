@@ -2,9 +2,10 @@
 #define SERV_CLIENT_H_
 
 #define MAX_CLIENTS 100
+#define NAME_LEN 10
 
 struct client {
-	char name[10];
+	char name[NAME_LEN + 2];
 	int unique_id;
 	int port;
 	int IP;

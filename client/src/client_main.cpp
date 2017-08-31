@@ -25,15 +25,27 @@ void ctrl_c(int a) {
 	isExit = true;
 }
 
-char name[10];
+void name_correct(char *s, int size);
+
+char name[NAME_LEN + 2]; // один байт для \n, второй для \0
 char help[] = "Type 'type' 	  to send a message\n"
 		"Type 'quit' 	  to quit\n"
 		"Type 'user list'  to get a user list\n"
 		"Type 'help' 	  to get a help\n\n";
 
+void get_name() {
+	do {
+		printf("\nEnter your name: ");
+		fgets(name, NAME_LEN + 1, stdin);
+		name[NAME_LEN] = '\n';
+		name[NAME_LEN + 1] = '\0';
+		trim(name);
+	} while (strcmp(name, "\n") == 0);
+}
+
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	WSAStartup(MAKEWORD(2, 0), &wsaData);
 
 	if (argc < 3) {
 		printf("usage %s hostname port\n", argv[0]);
@@ -72,15 +84,8 @@ int main(int argc, char *argv[]) {
 	printf("Connected... \n\n");
 
 	signal(SIGINT, ctrl_c);
-
-	do {
-		printf("\nEnter your name: ");
-		fgets(name, 10, stdin);
-		trim(name);
-	} while (strcmp(name, "\n") == 0);
-
-	int size = strlen(name) - 1;
-	name[size] = '\0';
+	get_name();
+	name_correct(name, strlen(name) - 1);
 
 	my_send(sock_serv, name, sizeof(name));
 
@@ -105,14 +110,8 @@ int main(int argc, char *argv[]) {
 			printf("\nThe name was successfully submitted!\n");
 		} else {
 			printf("\nThis name is already in use. Please, choose another\n");
-			do {
-				printf("\nEnter your name: ");
-				fgets(name, 10, stdin);
-				trim(name);
-			} while (strcmp(name, "\n") == 0);
-
-			int size = strlen(name) - 1;
-			name[size] = '\0';
+			get_name();
+			name_correct(name, strlen(name) - 1);
 
 			my_send(sock_serv, name, sizeof(name));
 		}
@@ -144,10 +143,10 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (listen(sock_cli, 5) < 0) {
-			printf("Error on listening: %d", WSAGetLastError());
-			WSACleanup();
-			exit(3);
-		}
+		printf("Error on listening: %d", WSAGetLastError());
+		WSACleanup();
+		exit(3);
+	}
 
 	my_send(sock_serv, (char*) &addr, sizeof(addr));
 

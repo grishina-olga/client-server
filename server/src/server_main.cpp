@@ -20,7 +20,7 @@ void display_users(SOCKET sockfd);
 
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	WSAStartup(MAKEWORD(2, 0), &wsaData);
 
 	logfile = fopen("logfile.txt", "w");
 
@@ -51,7 +51,6 @@ int main(int argc, char *argv[]) {
 
 	if (listen(sockfd, 5) < 0) {
 		printf("Error on listening: %d\n", WSAGetLastError());
-		;
 		WSACleanup();
 		exit(3);
 	}
@@ -86,9 +85,8 @@ DWORD WINAPI Client(LPVOID newsock) {
 	SOCKET my_sock;
 	my_sock = ((SOCKET *) newsock)[0];
 
-	const int namesize = 10;
-	char name[namesize];
-	memset(name, 0, 10);
+	char name[NAME_LEN + 2];
+	memset(name, 0, NAME_LEN + 2); // один байт для \n, второй для \0
 
 	int n = recv(my_sock, name, sizeof(name), 0);
 	if (n < 0) {
