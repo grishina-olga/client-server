@@ -33,7 +33,7 @@ char help[] = "Type 'type' 	  to send a message\n"
 
 int main(int argc, char *argv[]) {
 	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	WSAStartup(MAKEWORD(2, 0), &wsaData);
 
 	if (argc < 3) {
 		printf("usage %s hostname port\n", argv[0]);
@@ -340,7 +340,7 @@ DWORD WINAPI Send(LPVOID newsock) {
 				memset(&cli_addr, 0, sizeof(cli_addr));
 				cli_addr.sin_family = AF_INET;
 				cli_addr.sin_port = htons(port);
-				cli_addr.sin_addr.s_addr = ip; //IP äðóãîãî êëèåíòà
+				cli_addr.sin_addr.s_addr = ip; //IP Ã¤Ã°Ã³Ã£Ã®Ã£Ã® ÃªÃ«Ã¨Ã¥Ã­Ã²Ã 
 
 				SOCKET sock;
 				sock = socket(AF_INET, SOCK_STREAM, 0);
