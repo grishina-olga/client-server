@@ -339,7 +339,7 @@ DWORD WINAPI Send(LPVOID newsock) {
 				memset(&cli_addr, 0, sizeof(cli_addr));
 				cli_addr.sin_family = AF_INET;
 				cli_addr.sin_port = htons(port);
-				cli_addr.sin_addr.s_addr = ip; //IP Г¤Г°ГіГЈГ®ГЈГ® ГЄГ«ГЁГҐГ­ГІГ 
+				cli_addr.sin_addr.s_addr = ip; //IP другого клиента
 
 				SOCKET sock;
 				sock = socket(AF_INET, SOCK_STREAM, 0);

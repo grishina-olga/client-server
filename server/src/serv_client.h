@@ -1,7 +1,7 @@
 #ifndef SERV_CLIENT_H_
 #define SERV_CLIENT_H_
 
-#define MAX_CLIENTS 4
+#define MAX_CLIENTS 100
 #define NAME_LEN 10
 
 struct client {
