@@ -59,7 +59,5 @@ int find_user(char* name) {
 void quit(int sock) {
 	my_send(sock, "quit", strlen("quit"));
 	printf("\nYou are now quitting!\n");
-	close(sock);
-	WSACleanup();
 	exit(1);
 }

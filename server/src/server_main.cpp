@@ -33,8 +33,8 @@ int main(int argc, char *argv[]) {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		printf("Error opening socket: %d\n", WSAGetLastError());
-		exit(1);
 		WSACleanup();
+		exit(1);
 	}
 
 	sockaddr_in serv_addr;
@@ -72,6 +72,7 @@ int main(int argc, char *argv[]) {
 				inet_ntoa(cli_addr.sin_addr));
 
 		clients[mycounter].IP = cli_addr.sin_addr.s_addr;
+		mycounter++;
 
 		DWORD thID;
 		hThread = CreateThread(NULL, 0, Client, (LPVOID) &newsockfd, 0, &thID);
@@ -87,6 +88,8 @@ DWORD WINAPI Client(LPVOID newsock) {
 
 	char name[NAME_LEN + 2];
 	memset(name, 0, NAME_LEN + 2); // один байт для \n, второй для \0
+
+	int inx = mycounter-1;
 
 	int n = recv(my_sock, name, sizeof(name), 0);
 	if (n < 0) {
@@ -118,11 +121,11 @@ DWORD WINAPI Client(LPVOID newsock) {
 			exit(5);
 		}
 
-		strcpy(clients[mycounter].name, name);
-		clients[mycounter].unique_id = my_sock;
-		clients[mycounter].port = port;
+		strcpy(clients[inx].name, name);
+		clients[inx].unique_id = my_sock;
+		clients[inx].port = port;
 
-		mycounter++;
+	//	mycounter++;
 
 		printf("Name: %s   ID: %d   Port: %d\n\n", name, my_sock, port);
 
@@ -136,7 +139,7 @@ DWORD WINAPI Client(LPVOID newsock) {
 		SOCKET sock;
 		for (int i = 0; i < mycounter; i++) {
 			sock = clients[i].unique_id;
-			if (sock != my_sock) {
+			if (sock != my_sock && clients[i].unique_id != 0) {
 				my_send(sock, (char*) clients, sizeof(clients));
 				my_send(sock, new_user, sizeof(new_user));
 			}
@@ -180,7 +183,7 @@ DWORD WINAPI Client(LPVOID newsock) {
 		SOCKET sock;
 		for (int i = 0; i < mycounter; i++) {
 			sock = clients[i].unique_id;
-			if (sock != my_sock) {
+			if (sock != my_sock && clients[i].unique_id != 0) {
 				my_send(sock, (char*) clients, sizeof(clients));
 				my_send(sock, log_quit, sizeof(log_quit));
 			}
