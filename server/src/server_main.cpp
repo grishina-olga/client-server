@@ -86,10 +86,10 @@ DWORD WINAPI Client(LPVOID newsock) {
 	SOCKET my_sock;
 	my_sock = ((SOCKET *) newsock)[0];
 
-	char name[NAME_LEN + 2];
+	char name[NAME_LEN + 2]; //one byte for \n, second byte for \0
 	memset(name, 0, NAME_LEN + 2); // один байт для \n, второй для \0
 
-	int inx = mycounter-1;
+	int inx = mycounter - 1;
 
 	int n = recv(my_sock, name, sizeof(name), 0);
 	if (n < 0) {
@@ -124,8 +124,6 @@ DWORD WINAPI Client(LPVOID newsock) {
 		strcpy(clients[inx].name, name);
 		clients[inx].unique_id = my_sock;
 		clients[inx].port = port;
-
-	//	mycounter++;
 
 		printf("Name: %s   ID: %d   Port: %d\n\n", name, my_sock, port);
 

@@ -7,16 +7,6 @@
 #include <string.h>
 #include <gtest/gtest.h>
 
-#define MAX_CLIENTS 100
-
-typedef struct {
-	char name[10];
-	int unique_id;
-	int port;
-	int IP;
-} client;
-
-//extern client clients[MAX_CLIENTS];
 client clients[MAX_CLIENTS] = { { "", 0, 0, 0 } };
 
 int find_user(char* name);

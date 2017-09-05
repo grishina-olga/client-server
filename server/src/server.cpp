@@ -9,7 +9,8 @@
 
 extern client clients[MAX_CLIENTS];
 
-int my_send(SOCKET s, const char* buf, int size){
+#ifndef TESTING //for testing
+int my_send(SOCKET s, const char* buf, int size) {
 	int n = send(s, buf, size, 0);
 	if (n < 0) {
 		printf("Error sending: %d\n", WSAGetLastError());
@@ -37,6 +38,7 @@ int display_users(SOCKET sockfd) {
 	int n = my_send(sockfd, (char*) clients, sizeof(clients));
 	return n;
 }
+#endif
 
 int unique_name(char* name) {
 	int counter = 0;

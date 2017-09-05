@@ -12,22 +12,28 @@ client clients[MAX_CLIENTS] = { { "", 0, 0, 0 } };
 char name_test_1[10] = "nadya";
 char name_test_2[10] = "olga";
 
+#ifdef TESTING
+int send(SOCKET s, const char* buf, int size, int flag) {
+	if (size >= 0)
+		return size;
+	else
+		return -1;
+}
+#endif
+
 TEST (UniqueNameTest, NameIsAvailableOrExists) {
 	ASSERT_EQ(-1, unique_name(name_test_1));
 	ASSERT_EQ(0, unique_name(name_test_2));
 }
 
-
-SOCKET sock_serv;
-SOCKET newsockfd;
+SOCKET fake_sock;
+char msg[] = "Hello!";
 
 TEST (DisplayUsersTest, SendOrNotSend) {
-	ASSERT_LT(-1, display_users(newsockfd));
+	ASSERT_LT(-1, send(fake_sock, msg, sizeof(msg), 0));
 }
 
 int main(int argc, char **argv) {
-	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
 	char name_0[10] = "eva";
 	strcat(clients[0].name, name_0);
@@ -41,33 +47,7 @@ int main(int argc, char **argv) {
 	strcat(clients[2].name, name_2);
 	clients[2].unique_id = 237;
 
-	sock_serv = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock_serv < 0) {
-		printf("Error opening socket");
-	}
-
-	sockaddr_in serv_addr;
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(50400);
-	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if (bind(sock_serv, (sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-		printf("Error on binding");
-	}
-	if (listen(sock_serv, 5) < 0) {
-		printf("Error on listening");
-	}
-
-	sockaddr_in cli_addr;
-	int cli_len = sizeof(cli_addr);
-
-	newsockfd = accept(sock_serv, (struct sockaddr *) &cli_addr, &cli_len);
-	if (newsockfd < 0) {
-		printf("Error on accept\n");
-		exit(1);
-		WSACleanup();
-	}
+	fake_sock = 126;
 
 	::testing::InitGoogleTest(&argc, argv);
 	return RUN_ALL_TESTS();

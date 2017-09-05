@@ -10,7 +10,7 @@
 
 extern client clients[MAX_CLIENTS];
 
-int my_send(SOCKET s, const char* buf, int size){
+int my_send(SOCKET s, const char* buf, int size) {
 	int n = send(s, buf, size, 0);
 	if (n < 0) {
 		printf("Error sending\n");
@@ -33,19 +33,19 @@ void trim(char *s) {
 	while ((s[i] == ' ') || (s[i] == '\t')) {
 		i--;
 	}
-	if (i < (strlen(s) - 2 )) {
+	if (i < (strlen(s) - 2)) {
 		s[i + 2] = '\0';
 	}
 }
 
 void name_correct(char *s, int index) {
-	while(s[index] == '\n') {
+	while (s[index] == '\n') {
 		s[index] = '\0';
 		index--;
 	}
 }
 
-int find_user(char* name) {
+int find_user(const char* name) {
 	int counter = 0;
 	while (counter < MAX_CLIENTS && clients[counter].unique_id != 0) {
 		if (strcmp(clients[counter].name, name) == 0) {

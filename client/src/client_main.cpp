@@ -16,7 +16,7 @@ DWORD WINAPI Recv_cli(LPVOID newsock);
 DWORD WINAPI Send(LPVOID newsock);
 
 int my_send(SOCKET s, const char* buf, int size);
-int find_user(char* name);
+int find_user(const char* name);
 
 void trim(char *s);
 void quit(int sock);
@@ -27,7 +27,7 @@ void ctrl_c(int a) {
 
 void name_correct(char *s, int size);
 
-char name[NAME_LEN + 2]; // один байт для \n, второй для \0
+char name[NAME_LEN + 2]; //one byte for \n, second byte for \0
 char help[] = "Type 'type' 	  to send a message\n"
 		"Type 'quit' 	  to quit\n"
 		"Type 'user list'  to get a user list\n"
@@ -150,9 +150,6 @@ int main(int argc, char *argv[]) {
 
 	my_send(sock_serv, (char*) &addr, sizeof(addr));
 
-	char active[1000];
-	memset(active, 0, 1000);
-
 	int n = recv(sock_serv, (char*) clients, sizeof(clients), 0);
 	if (n < 0) {
 		printf("\nError reading from socket");
@@ -160,15 +157,15 @@ int main(int argc, char *argv[]) {
 		exit(3);
 	}
 
+	printf("\nThe active users are: ");
 	for (int i = 0; i < MAX_CLIENTS; i++) {
-		strcat(active, clients[i].name);
-		strcat(active, "\n");
 		if (strcmp("\0", clients[i].name) == 0) {
 			break;
 		}
+		printf("\n%s", clients[i].name);
 	}
-	printf("\nThe active users are:\n%s", active);
-	printf("\nYou are ready. \n%s", help);
+
+	printf("\n\nYou are ready. \n%s", help);
 
 	DWORD thID_r_s;
 	DWORD thID_r_c;
@@ -200,7 +197,8 @@ int main(int argc, char *argv[]) {
 }
 
 bool block_rec = false;
-char global_recv_buf[1000];
+const int size_buf = 1000;
+char global_recv_buf[size_buf];
 
 DWORD WINAPI Recv_serv(LPVOID newsock) {
 	SOCKET my_sock;
@@ -220,8 +218,14 @@ DWORD WINAPI Recv_serv(LPVOID newsock) {
 		}
 
 		if (block_rec == true) {
-			strcat(global_recv_buf, msg);
-			strcat(global_recv_buf, "\n");
+			if ((strlen(global_recv_buf) + strlen(msg) + strlen("\n"))
+					< size_buf) {
+				strcat(global_recv_buf, msg);
+				strcat(global_recv_buf, "\n");
+			} else {
+				printf(
+						"\nThe buffer is overflow!\nYou can`t receive messages!\nPlease, send your message!\n");
+			}
 		} else {
 			printf("%s\n", msg);
 		}
@@ -258,8 +262,14 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 		}
 
 		if (block_rec == true) {
-			strcat(global_recv_buf, msg);
-			strcat(global_recv_buf, "\n");
+			if ((strlen(global_recv_buf) + strlen(msg) + strlen("\n"))
+					< size_buf) {
+				strcat(global_recv_buf, msg);
+				strcat(global_recv_buf, "\n");
+			} else {
+				printf(
+						"\nThe buffer is overflow!\nYou can`t receive messages!\nPlease, send your message!\n");
+			}
 		} else {
 			printf("%s\n", msg);
 		}
@@ -270,8 +280,6 @@ DWORD WINAPI Recv_cli(LPVOID newsock) {
 }
 
 DWORD WINAPI Send(LPVOID newsock) {
-	signal(SIGINT, ctrl_c);
-
 	SOCKET my_sock;
 	my_sock = ((SOCKET *) newsock)[0];
 
@@ -280,8 +288,6 @@ DWORD WINAPI Send(LPVOID newsock) {
 	char receiver[10];
 	char del[] = ": ";
 	char cmd[100];
-
-	signal(SIGINT, ctrl_c);
 
 	while (1) {
 		fgets(cmd, sizeof(cmd), stdin);
