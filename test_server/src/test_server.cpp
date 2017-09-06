@@ -12,14 +12,16 @@ client clients[MAX_CLIENTS] = { { "", 0, 0, 0 } };
 char name_test_1[10] = "nadya";
 char name_test_2[10] = "olga";
 
-#ifdef TESTING
+
 int send(SOCKET s, const char* buf, int size, int flag) {
 	if (size >= 0)
 		return size;
 	else
 		return -1;
 }
-#endif
+int WSAGetLastError(){
+	return 1;
+}
 
 TEST (UniqueNameTest, NameIsAvailableOrExists) {
 	ASSERT_EQ(-1, unique_name(name_test_1));
@@ -29,8 +31,8 @@ TEST (UniqueNameTest, NameIsAvailableOrExists) {
 SOCKET fake_sock;
 char msg[] = "Hello!";
 
-TEST (DisplayUsersTest, SendOrNotSend) {
-	ASSERT_LT(-1, send(fake_sock, msg, sizeof(msg), 0));
+TEST (MySend, SendOrNotSend) {
+	ASSERT_LT(-1, my_send(fake_sock, msg, sizeof(msg)));
 }
 
 int main(int argc, char **argv) {
