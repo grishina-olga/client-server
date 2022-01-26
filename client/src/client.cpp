@@ -18,6 +18,7 @@ int my_send(SOCKET s, const char* buf, int size) {
 	return n;
 }
 
+// bla bla
 void trim(char *s) {
 	unsigned int i = 0, j;
 	while ((s[i] == ' ') || (s[i] == '\t')) {
